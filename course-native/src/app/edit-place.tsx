@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -9,44 +9,140 @@ import {
   View,
 } from "react-native";
 
-export default function EditPlace() {
-  const [type, setType] = useState<"coffee" | "food">("coffee");
-  const [name, setName] = useState("The Green Bean");
-  const [location, setLocation] = useState(
-    "District 1, Ho Chi Minh City"
-  );
-  const [rating, setRating] = useState(5);
-  const [notes, setNotes] = useState(
-    "A cozy place with really good matcha and a quiet atmosphere."
-  );
+import {
+  getPlaceById,
+  updatePlace,
+} from "../../lib/place";
 
-  const handleSave = () => {
-    if (!name.trim() || !location.trim() || rating === 0) {
+export default function EditPlace() {
+  const { id } = useLocalSearchParams<{
+    id: string;
+  }>();
+
+  const [type, setType] = useState<"coffee" | "food">(
+    "coffee"
+  );
+  const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
+  const [rating, setRating] = useState(0);
+  const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Load existing place
+  useEffect(() => {
+    loadPlace();
+  }, [id]);
+
+  const loadPlace = async () => {
+    if (!id) {
+      Alert.alert("Error", "Place ID is missing.");
       return;
     }
 
-    // For now, we only return to the detail screen.
-    // Later, this will update the place through the backend.
-    router.back();
+    try {
+      setLoading(true);
+
+      const place = await getPlaceById(id);
+
+      setType(place.type);
+      setName(place.name);
+      setLocation(place.location);
+      setRating(place.rating);
+      setNotes(place.notes || "");
+      setTags(place.tags || []);
+    } catch (error) {
+      console.error("Load place error:", error);
+
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to load place."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete place?",
-      "Are you sure you want to remove this place from your favorites?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => router.replace("/home"),
-        },
-      ]
-    );
+  // Save changes
+  const handleSave = async () => {
+    if (!id) {
+      Alert.alert("Error", "Place ID is missing.");
+      return;
+    }
+
+    if (
+      !name.trim() ||
+      !location.trim() ||
+      rating === 0
+    ) {
+      Alert.alert(
+        "Missing information",
+        "Please enter a place name, location, and rating."
+      );
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await updatePlace(id, {
+        name: name.trim(),
+        type,
+        location: location.trim(),
+        rating,
+        notes: notes.trim(),
+        tags,
+      });
+
+      Alert.alert(
+        "Place updated",
+        "Your changes have been saved successfully.",
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              router.replace({
+                pathname: "/place-detail",
+                params: {
+                  id,
+                },
+              }),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Update place error:", error);
+
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to update place."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const isFormValid =
+    name.trim() !== "" &&
+    location.trim() !== "" &&
+    rating > 0;
+
+  // Loading screen
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#F7F3E8]">
+        <Text className="text-base text-[#8A806D]">
+          Loading place...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-[#F7F3E8]">
@@ -62,9 +158,12 @@ export default function EditPlace() {
         <View className="flex-row items-center">
           <Pressable
             onPress={() => router.back()}
+            disabled={saving}
             className="h-11 w-11 items-center justify-center rounded-full bg-[#E2E9D5]"
           >
-            <Text className="text-2xl text-[#34402B]">‹</Text>
+            <Text className="text-xl text-[#34402B]">
+              ‹
+            </Text>
           </Pressable>
 
           <View className="ml-4">
@@ -73,27 +172,31 @@ export default function EditPlace() {
             </Text>
 
             <Text className="mt-1 text-sm text-[#8A806D]">
-              Update your favorite place.
+              Update your place details.
             </Text>
           </View>
         </View>
 
-        {/* Type */}
+        {/* Place Type */}
         <View className="mt-9">
           <Text className="mb-3 text-sm font-semibold text-[#596747]">
             What kind of place?
           </Text>
 
           <View className="flex-row gap-3">
+            {/* Coffee */}
             <Pressable
               onPress={() => setType("coffee")}
+              disabled={saving}
               className={`flex-1 flex-row items-center justify-center rounded-2xl border py-4 ${
                 type === "coffee"
                   ? "border-[#718355] bg-[#DDE6D0]"
                   : "border-[#E3DDCD] bg-[#FFFDF7]"
               }`}
             >
-              <Text className="mr-2 text-xl">☕</Text>
+              <Text className="mr-2 text-xl">
+                ☕
+              </Text>
 
               <Text
                 className={`font-bold ${
@@ -106,15 +209,19 @@ export default function EditPlace() {
               </Text>
             </Pressable>
 
+            {/* Food */}
             <Pressable
               onPress={() => setType("food")}
+              disabled={saving}
               className={`flex-1 flex-row items-center justify-center rounded-2xl border py-4 ${
                 type === "food"
                   ? "border-[#718355] bg-[#DDE6D0]"
                   : "border-[#E3DDCD] bg-[#FFFDF7]"
               }`}
             >
-              <Text className="mr-2 text-xl">🍜</Text>
+              <Text className="mr-2 text-xl">
+                🍜
+              </Text>
 
               <Text
                 className={`font-bold ${
@@ -129,7 +236,7 @@ export default function EditPlace() {
           </View>
         </View>
 
-        {/* Place name */}
+        {/* Place Name */}
         <View className="mt-7">
           <Text className="mb-2 text-sm font-semibold text-[#596747]">
             Place name
@@ -138,7 +245,8 @@ export default function EditPlace() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Place name"
+            editable={!saving}
+            placeholder="e.g. The Green Bean"
             placeholderTextColor="#A59C8A"
             className="rounded-2xl border border-[#E3DDCD] bg-[#FFFDF7] px-5 py-4 text-base text-[#34402B]"
           />
@@ -153,6 +261,7 @@ export default function EditPlace() {
           <TextInput
             value={location}
             onChangeText={setLocation}
+            editable={!saving}
             placeholder="e.g. District 1, Ho Chi Minh City"
             placeholderTextColor="#A59C8A"
             className="rounded-2xl border border-[#E3DDCD] bg-[#FFFDF7] px-5 py-4 text-base text-[#34402B]"
@@ -170,6 +279,7 @@ export default function EditPlace() {
               <Pressable
                 key={star}
                 onPress={() => setRating(star)}
+                disabled={saving}
                 className="mr-3"
               >
                 <Text
@@ -185,7 +295,9 @@ export default function EditPlace() {
             ))}
 
             <Text className="ml-1 text-sm font-semibold text-[#8A806D]">
-              {rating > 0 ? `${rating}.0 / 5` : "Tap to rate"}
+              {rating > 0
+                ? `${rating}.0 / 5`
+                : "Tap to rate"}
             </Text>
           </View>
         </View>
@@ -199,6 +311,7 @@ export default function EditPlace() {
           <TextInput
             value={notes}
             onChangeText={setNotes}
+            editable={!saving}
             placeholder="What did you like about this place?"
             placeholderTextColor="#A59C8A"
             multiline
@@ -242,34 +355,23 @@ export default function EditPlace() {
         {/* Save */}
         <Pressable
           onPress={handleSave}
-          disabled={
-            !name.trim() || !location.trim() || rating === 0
-          }
+          disabled={!isFormValid || saving}
           className={`mt-8 rounded-2xl py-4 ${
-            name.trim() && location.trim() && rating > 0
+            isFormValid && !saving
               ? "bg-[#718355]"
               : "bg-[#C5CCB8]"
           }`}
         >
           <Text className="text-center text-base font-bold text-white">
-            Save Changes
-          </Text>
-        </Pressable>
-
-        {/* Delete */}
-        <Pressable
-          onPress={handleDelete}
-          className="mt-4 items-center rounded-2xl border border-[#E4CFC5] py-4"
-        >
-          <Text className="font-bold text-[#A06454]">
-            Delete Place
+            {saving ? "Saving..." : "Save Changes"}
           </Text>
         </Pressable>
 
         {/* Cancel */}
         <Pressable
           onPress={() => router.back()}
-          className="mt-3 items-center py-3"
+          disabled={saving}
+          className="mt-4 items-center py-3"
         >
           <Text className="font-semibold text-[#8A806D]">
             Cancel

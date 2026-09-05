@@ -1,5 +1,7 @@
 import { Link, router } from "expo-router";
+import { useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -7,7 +9,59 @@ import {
   View,
 } from "react-native";
 
+import { signUp } from "../../../lib/auth";
+
 export default function SignUp() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSignUp = async () => {
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
+      Alert.alert(
+        "Missing information",
+        "Please enter your name, email, and password."
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(
+        "Invalid password",
+        "Password must be at least 6 characters."
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await signUp(
+        name.trim(),
+        email.trim(),
+        password
+      );
+
+      router.replace("/home");
+    } catch (error) {
+      console.error("Sign up error:", error);
+
+      Alert.alert(
+        "Sign up failed",
+        error instanceof Error
+          ? error.message
+          : "Unable to create your account."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-[#F7F3E8]">
       <ScrollView
@@ -40,9 +94,13 @@ export default function SignUp() {
           </Text>
 
           <TextInput
+            value={name}
+            onChangeText={setName}
+            editable={!loading}
             className="rounded-2xl border border-[#E3DDCD] bg-[#FFFDF7] px-5 py-4 text-base text-[#34402B]"
             placeholder="Your name"
             placeholderTextColor="#A59C8A"
+            autoCapitalize="words"
           />
 
           {/* Email */}
@@ -51,11 +109,15 @@ export default function SignUp() {
           </Text>
 
           <TextInput
+            value={email}
+            onChangeText={setEmail}
+            editable={!loading}
             className="rounded-2xl border border-[#E3DDCD] bg-[#FFFDF7] px-5 py-4 text-base text-[#34402B]"
             placeholder="you@example.com"
             placeholderTextColor="#A59C8A"
             keyboardType="email-address"
             autoCapitalize="none"
+            autoCorrect={false}
           />
 
           {/* Password */}
@@ -64,6 +126,9 @@ export default function SignUp() {
           </Text>
 
           <TextInput
+            value={password}
+            onChangeText={setPassword}
+            editable={!loading}
             className="rounded-2xl border border-[#E3DDCD] bg-[#FFFDF7] px-5 py-4 text-base text-[#34402B]"
             placeholder="••••••••"
             placeholderTextColor="#A59C8A"
@@ -72,11 +137,18 @@ export default function SignUp() {
 
           {/* Sign up button */}
           <Pressable
-            onPress={() => router.replace("/")}
-            className="mt-8 rounded-2xl bg-[#718355] py-4"
+            onPress={handleSignUp}
+            disabled={loading}
+            className={`mt-8 rounded-2xl py-4 ${
+              loading
+                ? "bg-[#C5CCB8]"
+                : "bg-[#718355]"
+            }`}
           >
             <Text className="text-center text-base font-bold text-white">
-              Create Account
+              {loading
+                ? "Creating account..."
+                : "Create Account"}
             </Text>
           </Pressable>
         </View>

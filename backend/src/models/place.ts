@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IPlace extends Document {
+  user: mongoose.Types.ObjectId;
   name: string;
   type: "coffee" | "food";
   location: string;
@@ -12,6 +13,12 @@ export interface IPlace extends Document {
 
 const placeSchema = new Schema<IPlace>(
   {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
     name: {
       type: String,
       required: true,
@@ -53,6 +60,9 @@ const placeSchema = new Schema<IPlace>(
   }
 );
 
-const Place = mongoose.model<IPlace>("Place", placeSchema);
+const Place = mongoose.model<IPlace>(
+  "Place",
+  placeSchema
+);
 
 export default Place;

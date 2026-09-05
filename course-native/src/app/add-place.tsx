@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -8,22 +9,67 @@ import {
   View,
 } from "react-native";
 
+import { createPlace } from "../../lib/place";
+
 export default function AddPlace() {
   const [type, setType] = useState<"coffee" | "food">("coffee");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [rating, setRating] = useState(0);
   const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Validate input
     if (!name.trim() || !location.trim() || rating === 0) {
+      Alert.alert(
+        "Missing information",
+        "Please enter a place name, location, and rating."
+      );
       return;
     }
 
-    // For now, we only return to Home.
-    // Later, we can save this data to AsyncStorage or a database.
-    router.replace("/home");
+    try {
+      setLoading(true);
+
+      // Send place to backend
+      await createPlace({
+        name: name.trim(),
+        type,
+        location: location.trim(),
+        rating,
+        notes: notes.trim(),
+        tags: [],
+      });
+
+      Alert.alert(
+        "Place saved",
+        "Your place has been saved successfully.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/home"),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Save place error:", error);
+
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save place."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const isFormValid =
+    name.trim() !== "" &&
+    location.trim() !== "" &&
+    rating > 0;
 
   return (
     <View className="flex-1 bg-[#F7F3E8]">
@@ -41,7 +87,9 @@ export default function AddPlace() {
             onPress={() => router.back()}
             className="h-11 w-11 items-center justify-center rounded-full bg-[#E2E9D5]"
           >
-            <Text className="text-xl text-[#34402B]">‹</Text>
+            <Text className="text-xl text-[#34402B]">
+              ‹
+            </Text>
           </Pressable>
 
           <View className="ml-4">
@@ -71,7 +119,9 @@ export default function AddPlace() {
                   : "border-[#E3DDCD] bg-[#FFFDF7]"
               }`}
             >
-              <Text className="mr-2 text-xl">☕</Text>
+              <Text className="mr-2 text-xl">
+                ☕
+              </Text>
 
               <Text
                 className={`font-bold ${
@@ -93,7 +143,9 @@ export default function AddPlace() {
                   : "border-[#E3DDCD] bg-[#FFFDF7]"
               }`}
             >
-              <Text className="mr-2 text-xl">🍜</Text>
+              <Text className="mr-2 text-xl">
+                🍜
+              </Text>
 
               <Text
                 className={`font-bold ${
@@ -168,7 +220,9 @@ export default function AddPlace() {
             ))}
 
             <Text className="ml-1 text-sm font-semibold text-[#8A806D]">
-              {rating > 0 ? `${rating}.0 / 5` : "Tap to rate"}
+              {rating > 0
+                ? `${rating}.0 / 5`
+                : "Tap to rate"}
             </Text>
           </View>
         </View>
@@ -225,21 +279,22 @@ export default function AddPlace() {
         {/* Save */}
         <Pressable
           onPress={handleSave}
-          disabled={!name.trim() || !location.trim() || rating === 0}
+          disabled={!isFormValid || loading}
           className={`mt-8 rounded-2xl py-4 ${
-            name.trim() && location.trim() && rating > 0
+            isFormValid && !loading
               ? "bg-[#718355]"
               : "bg-[#C5CCB8]"
           }`}
         >
           <Text className="text-center text-base font-bold text-white">
-            Save Place
+            {loading ? "Saving..." : "Save Place"}
           </Text>
         </Pressable>
 
         {/* Cancel */}
         <Pressable
           onPress={() => router.back()}
+          disabled={loading}
           className="mt-4 items-center py-3"
         >
           <Text className="font-semibold text-[#8A806D]">

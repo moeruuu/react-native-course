@@ -1,7 +1,10 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+
 import { connectDB } from "./config/db";
+import placeRoutes from "./routes/place.routes";
+import authRoutes from "./routes/auth.routes";
 
 dotenv.config();
 
@@ -17,9 +20,11 @@ app.get("/", (_req, res) => {
   });
 });
 
+app.use("/api/places", placeRoutes);
+app.use("/api/auth", authRoutes);
+
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 });
-

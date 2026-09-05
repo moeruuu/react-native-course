@@ -1,12 +1,58 @@
-import { Link, router } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Link, router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+
+import { getPlaces, Place } from "../../lib/place";
 
 export default function Home() {
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadPlaces = async () => {
+    try {
+      setLoading(true);
+
+      const data = await getPlaces();
+
+      setPlaces(data);
+    } catch (error) {
+      console.error("Load places error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reload whenever Home becomes active
+  useFocusEffect(
+    useCallback(() => {
+      loadPlaces();
+    }, [])
+  );
+
+  // Statistics
+  const coffeeCount = places.filter(
+    (place) => place.type === "coffee"
+  ).length;
+
+  const foodCount = places.filter(
+    (place) => place.type === "food"
+  ).length;
+
+  // Latest 2 places
+  const recentPlaces = places.slice(0, 2);
+
   return (
     <View className="flex-1 bg-[#F7F3E8]">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{
+          paddingBottom: 100,
+        }}
       >
         {/* Header */}
         <View className="px-6 pb-6 pt-16">
@@ -23,10 +69,10 @@ export default function Home() {
 
             {/* Profile */}
             <Pressable
-                onPress={() => router.push("/profile")}
-                className="h-12 w-12 items-center justify-center rounded-full bg-[#DDE6D0]"
-                >
-                <Text className="text-xl">🌿</Text>
+              onPress={() => router.push("/profile")}
+              className="h-12 w-12 items-center justify-center rounded-full bg-[#DDE6D0]"
+            >
+              <Text className="text-xl">🌿</Text>
             </Pressable>
           </View>
 
@@ -44,7 +90,7 @@ export default function Home() {
             </View>
 
             <Text className="mt-4 text-3xl font-bold text-[#34402B]">
-              8
+              {coffeeCount}
             </Text>
 
             <Text className="mt-1 text-sm font-medium text-[#596747]">
@@ -59,7 +105,7 @@ export default function Home() {
             </View>
 
             <Text className="mt-4 text-3xl font-bold text-[#4F4637]">
-              12
+              {foodCount}
             </Text>
 
             <Text className="mt-1 text-sm font-medium text-[#80735F]">
@@ -75,109 +121,123 @@ export default function Home() {
               Recent favorites
             </Text>
 
-            <Pressable onPress={() => router.push("/places")}>
-                <Text className="font-semibold text-[#718355]">
-                    See all
-                </Text>
+            <Pressable
+              onPress={() => router.push("/places")}
+            >
+              <Text className="font-semibold text-[#718355]">
+                See all
+              </Text>
             </Pressable>
           </View>
 
-          {/* Coffee Place */}
-          <Pressable
-            onPress={() => router.push("/place-detail")}
-            className="mt-4 overflow-hidden rounded-3xl bg-[#FFFDF7]"
-            >
-            {/* Image placeholder */}
-            <View className="h-40 items-center justify-center bg-[#C9D6B5]">
-              <Text className="text-6xl">☕</Text>
-            </View>
-
-            <View className="p-5">
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1">
-                  <Text className="text-xl font-bold text-[#34402B]">
-                    The Green Bean
-                  </Text>
-
-                  <Text className="mt-1 text-sm text-[#8A806D]">
-                    District 1 · Ho Chi Minh City
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center rounded-full bg-[#F0E7D5] px-3 py-2">
-                  <Text className="text-sm font-bold text-[#A58B52]">
-                    ★ 4.8
-                  </Text>
-                </View>
-              </View>
-
-              <Text className="mt-4 leading-5 text-[#665E50]">
-                A cozy place with really good matcha and a
-                quiet atmosphere.
+          {/* Loading */}
+          {loading && (
+            <View className="mt-6 items-center">
+              <Text className="text-sm text-[#8A806D]">
+                Loading your places...
               </Text>
+            </View>
+          )}
 
-              <View className="mt-4 flex-row gap-2">
-                <View className="rounded-full bg-[#E2E9D5] px-3 py-2">
-                  <Text className="text-xs font-semibold text-[#596747]">
-                    Matcha
-                  </Text>
-                </View>
+          {/* Empty state */}
+          {!loading && recentPlaces.length === 0 && (
+            <View className="mt-4 rounded-3xl bg-[#FFFDF7] p-6">
+              <View className="items-center">
+                <Text className="text-4xl">🌿</Text>
 
-                <View className="rounded-full bg-[#E2E9D5] px-3 py-2">
-                  <Text className="text-xs font-semibold text-[#596747]">
-                    Cozy
-                  </Text>
-                </View>
+                <Text className="mt-3 text-lg font-bold text-[#34402B]">
+                  No places yet
+                </Text>
+
+                <Text className="mt-1 text-center text-sm leading-5 text-[#8A806D]">
+                  Start saving your favorite coffee
+                  shops and food places.
+                </Text>
               </View>
             </View>
-          </Pressable>
+          )}
 
-          {/* Food Place */}
-          <View className="mt-4 overflow-hidden rounded-3xl bg-[#FFFDF7]">
-            {/* Image placeholder */}
-            <View className="h-40 items-center justify-center bg-[#E5D8BF]">
-              <Text className="text-6xl">🍜</Text>
-            </View>
-
-            <View className="p-5">
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1">
-                  <Text className="text-xl font-bold text-[#34402B]">
-                    Little Hanoi
-                  </Text>
-
-                  <Text className="mt-1 text-sm text-[#8A806D]">
-                    District 3 · Ho Chi Minh City
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center rounded-full bg-[#F0E7D5] px-3 py-2">
-                  <Text className="text-sm font-bold text-[#A58B52]">
-                    ★ 4.9
-                  </Text>
-                </View>
-              </View>
-
-              <Text className="mt-4 leading-5 text-[#665E50]">
-                Great Vietnamese food with a warm and relaxed
-                atmosphere.
-              </Text>
-
-              <View className="mt-4 flex-row gap-2">
-                <View className="rounded-full bg-[#E2E9D5] px-3 py-2">
-                  <Text className="text-xs font-semibold text-[#596747]">
-                    Vietnamese
+          {/* Recent places */}
+          {!loading &&
+            recentPlaces.map((place) => (
+              <Pressable
+                key={place._id}
+                onPress={() =>
+                  router.push({
+                    pathname: "/place-detail",
+                    params: {
+                      id: place._id,
+                    },
+                  })
+                }
+                className="mt-4 overflow-hidden rounded-3xl bg-[#FFFDF7]"
+              >
+                {/* Image placeholder */}
+                <View
+                  className={`h-40 items-center justify-center ${
+                    place.type === "coffee"
+                      ? "bg-[#C9D6B5]"
+                      : "bg-[#E5D8BF]"
+                  }`}
+                >
+                  <Text className="text-6xl">
+                    {place.type === "coffee"
+                      ? "☕"
+                      : "🍜"}
                   </Text>
                 </View>
 
-                <View className="rounded-full bg-[#E2E9D5] px-3 py-2">
-                  <Text className="text-xs font-semibold text-[#596747]">
-                    Favorite
-                  </Text>
+                {/* Content */}
+                <View className="p-5">
+                  <View className="flex-row items-start justify-between">
+                    <View className="flex-1 pr-3">
+                      <Text className="text-xl font-bold text-[#34402B]">
+                        {place.name}
+                      </Text>
+
+                      <Text className="mt-1 text-sm text-[#8A806D]">
+                        {place.location}
+                      </Text>
+                    </View>
+
+                    <View className="flex-row items-center rounded-full bg-[#F0E7D5] px-3 py-2">
+                      <Text className="text-sm font-bold text-[#A58B52]">
+                        ★ {place.rating}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Notes */}
+                  {place.notes && (
+                    <Text
+                      numberOfLines={2}
+                      className="mt-4 leading-5 text-[#665E50]"
+                    >
+                      {place.notes}
+                    </Text>
+                  )}
+
+                  {/* Tags */}
+                  {place.tags &&
+                    place.tags.length > 0 && (
+                      <View className="mt-4 flex-row flex-wrap gap-2">
+                        {place.tags
+                          .slice(0, 3)
+                          .map((tag) => (
+                            <View
+                              key={tag}
+                              className="rounded-full bg-[#E2E9D5] px-3 py-2"
+                            >
+                              <Text className="text-xs font-semibold text-[#596747]">
+                                {tag}
+                              </Text>
+                            </View>
+                          ))}
+                      </View>
+                    )}
                 </View>
-              </View>
-            </View>
-          </View>
+              </Pressable>
+            ))}
         </View>
 
         {/* Add Place */}
